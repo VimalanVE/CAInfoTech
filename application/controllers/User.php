@@ -52,13 +52,17 @@ class User extends CI_Controller
 				//If Logged-In user is Admin, load admin map view page
 				$filter_type = $this->input->get('filter_type');
 				$radius = $this->input->get('radius');
-				if (isset($filter_type) && isset($radius)) {
+				if (isset($filter_type) && isset($radius) && !empty($radius)) {
+					$manual_location = new \stdClass();
+					$manual_location->latitude = $this->input->get('manual_latitude');
+					$manual_location->longitude = $this->input->get('manual_longitude');
 					//If Filter is passed in query string, do filter using this function
-					$data['get_all_users'] = $this->usersWithinRadius($filter_type, $radius);
+					$data['get_all_users'] = $this->usersWithinRadius($filter_type, $radius,$manual_location);
 				} else {
 					//Get all users except Admin user
 					$data['get_all_users'] = $this->users_model->get_all_users($get_user_email);
 				}
+				$data['location'] = null;
 				if (count($data['get_all_users']) > 0) {
 					foreach ($data['get_all_users'] as $key => $user) {
 						$locations[$key]['name'] = $user['name'];
@@ -108,7 +112,12 @@ class User extends CI_Controller
 				'location_coordinates' => json_encode($location)
 			);
 			$id = $this->users_model->register($data);
-			redirect('/');
+			if($id){
+				$json = file_get_contents('https://geolocation-db.com/json');
+				$data['location'] = json_decode($json);
+				$this->session->set_flashdata('success', 'Successfully Registered ! Login to proceed further.');
+				$this->load->view('registration_page', $data);
+			}
 		} else {
 			header('location:' . base_url() . 'index.php/user/register');
 			$this->session->set_flashdata('error', 'Validation Error');
@@ -122,11 +131,15 @@ class User extends CI_Controller
 		redirect('/');
 	}
 
-	public function usersWithinRadius($filter_type, $radius)
+	public function usersWithinRadius($filter_type, $radius,$manual_location=null)
 	{
-		//Get logged-in user current location
-		$json = file_get_contents('https://geolocation-db.com/json');
-		$location = json_decode($json);
+		if(isset($manual_location) && empty($manual_location)){
+			//Get logged-in user current location
+			$json = file_get_contents('https://geolocation-db.com/json');
+			$location = json_decode($json);
+		}else{
+			$location = $manual_location;
+		}
 		if ($filter_type == 'miles') {
 			$filter_by_key = 3959;
 		} else {
@@ -136,6 +149,7 @@ class User extends CI_Controller
 		$sql = "SELECT *, ( $filter_by_key * acos( cos( radians($location->latitude) ) * cos( radians( JSON_EXTRACT(location_coordinates, '$.latitude') ) ) 
 		* cos( radians( JSON_EXTRACT(location_coordinates, '$.longitude') ) - radians($location->longitude) ) + sin( radians($location->latitude) ) * sin(radians(JSON_EXTRACT(location_coordinates, '$.latitude') )) ) ) AS distance 
 		FROM users 
+		WHERE email != 'admin@cainfotech.com'
 		HAVING distance < $radius 
 		ORDER BY distance 
 		LIMIT 0 , 20";

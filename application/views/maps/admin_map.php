@@ -20,8 +20,10 @@ body {
 }
     </style>
    <script type="text/javascript">
-    var locations = <?php print_r($location); ?>;
-    function initialize() {
+   <?php
+    if(!empty($location)) {?>
+      var locations = <?php print_r($location); ?>;
+      function initialize() {
       var map = new google.maps.Map(document.getElementById('map'), {
         zoom: 10,
         center: new google.maps.LatLng(locations[0]['address']['latitude'], locations[0]['address']['longitude']),
@@ -45,6 +47,22 @@ body {
         })(marker, i));
       }
     }
+    <?php
+    }else{
+   ?>
+   function initialize() {
+   var map = new google.maps.Map(document.getElementById('map'), {
+        zoom: 10,
+        center: new google.maps.LatLng(12.9191,80.2300),
+        mapTypeId: google.maps.MapTypeId.ROADMAP
+      });
+
+      var infowindow = new google.maps.InfoWindow();
+
+  }
+      <?php
+    }
+   ?>
   </script>
   </head>
   <body>
@@ -93,17 +111,22 @@ body {
           $getRadius = $getQueryParams['radius'];
         }
       ?>
-      <div class="row"> 
+      <div class="row col-md-12">
+        <div class="col-md-5"> 
+          <label for="radius"> Enter Manual From Latitude  :</label>
+          <input type="text" required name="manual_latitude" value=<?= $location->latitude ?>><br>
+          <label for="radius"> Enter Manual From Longitude :</label>
+          <input type="text" required name="manual_longitude" value=<?= $location->longitude ?>>
+        </div>
         <div class="col-md-4"> 
-          <label for="cars">Choose Filter type :</label>
+          <label for="filter_type">Choose Filter type :</label>
           <input type="radio" name="filter_type" value="kilometers" <?= $checkKilometerFilterType ?>> Kilometers
           <input type="radio" name="filter_type" value="miles" <?= $checkMileFilterType ?>> Miles
+          <br>
+          <label for="radius"> Enter Filter Radius :</label>
+          <input type="number" name="radius" required value=<?= $getRadius ?>>
         </div>
-        <div class="col-md-4"> 
-          <label for="cars"> Enter Filter Radius :</label>
-          <input type="number" name="radius" value=<?= $getRadius ?> required>
-        </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
           <input class="btn btn-primary" type="submit" value="Submit">
           <a type="button" href="<?php echo base_url(); ?>index.php/user/home" 
           class="btn btn-danger"><span class="glyphicon glyphicon-refresh"></span> Clear Filter</a>
@@ -114,10 +137,14 @@ body {
   </div>
         <ul class="list-group">
         <li class="list-group-item active">User Name<span class="badge">Current Location</span></li>
-          <?php foreach($get_all_users as $user) { 
+          <?php
+          if(count($get_all_users)>0) {
+          foreach($get_all_users as $user) { 
             $getLocation = json_decode($user['location_coordinates']);?>
             <li class="list-group-item"><?= $user['name'] ?><span class="badge"><?= $getLocation->address ?></span></li>
-          <?php } ?>
+          <?php }}else{ ?>
+            <li class="list-group-item">No user found</li>
+            <?php }?>
         </ul>
   </div>
 </div>
